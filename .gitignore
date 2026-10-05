@@ -1,0 +1,12 @@
+/releases/
+/artifacts/
+__pycache__/
+*.pyc
+*.zip
+*.log
+.env
+.env.*
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
