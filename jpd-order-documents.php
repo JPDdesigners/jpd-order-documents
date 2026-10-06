@@ -2,7 +2,7 @@
 /**
  * Plugin Name: JPD Order Documents Email
  * Description: Manual WooCommerce order document emails for showroom staff, including verified User Switching sessions. No scheduler or permanent document archive.
- * Version: 1.0.1
+ * Version: 1.1.0
  * Requires at least: 6.4
  * Requires PHP: 7.4
  * Requires Plugins: woocommerce

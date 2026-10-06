@@ -19,6 +19,7 @@ class JPD_OD_Email extends WC_Email {
             'subject' => array( 'title' => 'Θέμα', 'type' => 'text', 'default' => '', 'placeholder' => $this->get_default_subject(), 'desc_tip' => true, 'description' => 'Διαθέσιμα: {site_title}, {order_number}, {order_date}.' ),
             'heading' => array( 'title' => 'Επικεφαλίδα', 'type' => 'text', 'default' => '', 'placeholder' => $this->get_default_heading() ),
             'additional_content' => array( 'title' => 'Πρόσθετο κείμενο', 'type' => 'textarea', 'default' => '' ),
+            'matrix_appearance' => array( 'title' => 'Εμφάνιση σελίδας εγγράφων', 'type' => 'checkbox', 'label' => 'Χρήση χρώματος και γωνιών του B2B Matrix', 'default' => 'no', 'description' => 'Προαιρετικό. Αν το Matrix δεν είναι ενεργό, διατηρείται η ανεξάρτητη εμφάνιση του Documents. Χρησιμοποιείται system font χωρίς εξωτερικές λήψεις.' ),
         );
         // This manual message always uses WooCommerce HTML branding.
         $this->email_type = 'html';

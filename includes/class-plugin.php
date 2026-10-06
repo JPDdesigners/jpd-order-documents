@@ -48,6 +48,18 @@ class JPD_OD_Plugin {
     public static function scalar( $source, $key ) {
         return isset( $source[ $key ] ) && is_scalar( $source[ $key ] ) ? (string) wp_unslash( $source[ $key ] ) : '';
     }
+    public static function appearance() {
+        $settings = get_option( 'woocommerce_jpd_order_documents_settings', array() );
+        if ( ! is_array( $settings ) || ( $settings['matrix_appearance'] ?? 'no' ) !== 'yes' || ! is_callable( array( 'B2B_Matrix_Settings', 'design_tokens' ) ) ) { return ''; }
+        $tokens = B2B_Matrix_Settings::design_tokens();
+        $css = '';
+        foreach ( array( 'accent', 'on_accent', 'focus', 'card_radius', 'control_radius' ) as $key ) {
+            if ( isset( $tokens[ $key ] ) && is_string( $tokens[ $key ] ) && preg_match( '/^(#[a-fA-F0-9]{6}|[0-9]+px)$/D', $tokens[ $key ] ) ) {
+                $css .= '--jpd-' . str_replace( '_', '-', $key ) . ':' . $tokens[ $key ] . ';';
+            }
+        }
+        return $css;
+    }
     public static function page() {
         if ( ! isset( $_GET['jpd_send_documents'] ) ) { return; }
         nocache_headers(); do_action( 'litespeed_control_set_nocache' );

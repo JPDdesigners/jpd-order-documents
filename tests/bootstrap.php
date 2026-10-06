@@ -24,6 +24,7 @@ function wp_strip_all_tags( $v ) { return strip_tags( $v ); }
 function wp_kses_post( $v ) { return $v; }
 function wpautop( $v ) { return '<p>' . $v . '</p>'; }
 function get_bloginfo( $v ) { return 'JPD · Δειγματισμός'; }
+function get_option( $name, $default = false ) { return $GLOBALS['options'][$name] ?? $default; }
 function wc_get_price_decimals() { return 2; }
 function wc_format_datetime( $date ) { return '02/10/2026'; }
 function wc_get_product( $id ) { return $GLOBALS['products'][ $id ] ?? false; }

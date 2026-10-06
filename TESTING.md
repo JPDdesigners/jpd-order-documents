@@ -17,3 +17,7 @@ Actual PDF rendering uses the bundled libraries. A synthetic case with **1,000 d
 Browser verification: PDF selected by default, CSV optional; PDF-only and PDF+CSV creation; manual mock email acceptance; reload before/after dispatch without resending; selected-format restoration; cancellation/new selection; tablet viewport 800×1280. All PHP files passed syntax checks and the browser script passed `node --check`.
 
 Runtime integration with actual WordPress/WooCommerce/User Switching/SMTP still needs an installation test on the user's site. No live order was changed and no real email was sent during development.
+
+## 1.1.0 frontend and appearance checks
+
+Run `node --test tests/frontend.test.cjs` and `php tests/appearance.php` from the standalone repository (use `standalone/tests/` paths from the combined workspace). Eight JS flow tests cover focus transitions, compact selection, reset, lost send response, retained recovery token, expiry and terminal receipts and malformed status responses. Five PHP checks cover independent defaults, optional Matrix token integration and CSS validation. Browser checks at 390×844 confirmed no horizontal overflow, visible focused Send, terminal progress focus and clean reset. These tests use mock orders and do not send real email.
