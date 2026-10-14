@@ -1,0 +1,37 @@
+/* Compact export design, with table/inline layout for the PDF engine. */
+@page { margin: 14mm 14mm 17mm; }
+body { margin: 0; font-family: "DejaVu Sans", sans-serif; font-size: 11px; line-height: 1.2; color: #111; }
+table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.header { border-bottom: 1px solid #ddd; margin-bottom: 12px; page-break-inside: avoid; }
+.header td { vertical-align: top; padding: 0 0 12px; }
+.identity { width: 54%; }
+.logo { max-width: 170px; max-height: 45px; margin-bottom: 8px; }
+.brand { font-size: 19px; font-weight: bold; margin-bottom: 8px; }
+h1 { font-size: 15px; margin: 0 0 5px; }
+.compact-label { font-size: 10px; color: #555; margin-bottom: 5px; }
+.meta { font-size: 11px; line-height: 1.4; overflow-wrap: break-word; }
+.customer { text-align: right; }
+.comments { margin-top: 10px; background: #fafafa; border: 1px solid #ddd; padding: 6px 8px; text-align: left; font-size: 10px; line-height: 1.4; word-wrap: break-word; }
+.season { display: inline-block; margin-top: 6px; background: #eee; padding: 3px 8px; border-radius: 4px; }
+.matrix thead { display: table-header-group; }
+.matrix th { padding: 6px 4px; text-align: left; border-bottom: 2px solid #111; font-size: 10px; }
+.descriptioncol { width: 40%; }
+.sizescol { width: 41%; }
+.totalcol { width: 19%; }
+.matrix td { padding: 4px; border-bottom: 1px solid #ddd; vertical-align: middle; word-wrap: break-word; }
+.matrix .root td { background: #111; color: #fff; font-weight: bold; padding: 6px 8px; }
+.matrix .sub td { background: #eee; font-weight: bold; padding: 5px 8px; }
+.root, .sub { page-break-after: avoid; }
+.product-row { page-break-inside: avoid; }
+.descriptioncell small { font-size: 9px; }
+.sku { font-family: "DejaVu Sans Mono", monospace; font-size: 10px; font-weight: bold; }
+.sizecell { line-height: 1.9; }
+/* Full-height cells avoid inline baseline gaps in Dompdf's background painting. */
+.size-badge { display: inline-block; border: 1px solid #111; border-radius: 3px; background: #111; font-family: "DejaVu Sans Mono", monospace; font-size: 10px; font-weight: bold; white-space: nowrap; line-height: 0; margin: 1px 1px 1px 0; }
+.sb-size, .sb-qty { display: inline-block; vertical-align: top; padding: 1px 3px; line-height: 1.3; font-weight: bold; }
+.sb-size { background: #fff; color: #111; border-radius: 2px 0 0 2px; }
+.sb-qty { background: #111; color: #fff; }
+.matrix .amount { text-align: right; }
+.totals { text-align: right; border-top: 2px solid #111; margin-top: 14px; padding-top: 10px; page-break-inside: avoid; }
+.totals h2 { margin: 0 0 8px; font-size: 16px; }
+.empty { text-align: center; padding: 25px; }

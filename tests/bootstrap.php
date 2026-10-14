@@ -26,6 +26,8 @@ function wpautop( $v ) { return '<p>' . $v . '</p>'; }
 function get_bloginfo( $v ) { return 'JPD · Δειγματισμός'; }
 function get_option( $name, $default = false ) { return $GLOBALS['options'][$name] ?? $default; }
 function wc_get_price_decimals() { return 2; }
+function wc_price( $value, $args = array() ) { return '<span>' . number_format( $value, 2, ',', '.' ) . ' ' . ( ( $args['currency'] ?? 'EUR' ) === 'EUR' ? '&euro;' : esc_html( $args['currency'] ) ) . '</span>'; }
+function wp_upload_dir( $time = null, $create_dir = true ) { return $GLOBALS['uploads'] ?? array( 'baseurl' => home_url( '/wp-content/uploads' ), 'basedir' => ABSPATH . 'wp-content/uploads', 'error' => false ); }
 function wc_format_datetime( $date ) { return '02/10/2026'; }
 function wc_get_product( $id ) { return $GLOBALS['products'][ $id ] ?? false; }
 function get_the_terms( $id, $tax ) { return false; }
@@ -47,6 +49,7 @@ function do_action( ...$args ) { $GLOBALS['calls'][] = array( 'do', $args ); }
 function apply_filters( $name, $value, ...$args ) {
     if ( 'jpd_od_max_attachment_bytes' === $name ) { return $GLOBALS['limit']; }
     if ( 'jpd_b2b_export_include_item' === $name && isset( $GLOBALS['exclude'] ) ) { return $args[0]->id !== $GLOBALS['exclude']; }
+    if ( 'jpd_b2b_export_logo_url' === $name && isset( $GLOBALS['logo_url'] ) ) { return $GLOBALS['logo_url']; }
     return $value;
 }
 function wp_send_json_error( $data, $status = 200 ) { if ( defined('JPD_OD_FIXTURE_HTTP') ) { http_response_code($status); header('Content-Type: application/json'); echo json_encode(array('success'=>false,'data'=>$data)); exit; } throw new JsonReply( false, $data, $status ); }

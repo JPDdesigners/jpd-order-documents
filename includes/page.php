@@ -1,6 +1,6 @@
 <?php defined( 'ABSPATH' ) || exit; ?>
 <!doctype html><html lang="el"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>Αποστολή εγγράφων · #<?php echo esc_html( $order->get_order_number() ); ?></title>
-<link rel="stylesheet" href="<?php echo esc_url( plugins_url( 'assets/documents.css', JPD_OD_FILE ) ); ?>?ver=1.1.0"></head><body style="<?php echo esc_attr( JPD_OD_Plugin::appearance() ); ?>">
+<link rel="stylesheet" href="<?php echo esc_url( plugins_url( 'assets/documents.css', JPD_OD_FILE ) ); ?>?ver=1.1.3"></head><body style="<?php echo esc_attr( JPD_OD_Plugin::appearance() ); ?>">
 <main class="shell">
     <a class="back" href="<?php echo esc_url( wc_get_endpoint_url( 'orders', '', wc_get_page_permalink( 'myaccount' ) ) ); ?>">← Επιστροφή στις παραγγελίες</a>
     <header><p class="eyebrow">ΕΓΓΡΑΦΑ ΠΑΡΑΓΓΕΛΙΑΣ</p><h1>Αποστολή με email</h1><p>Παραγγελία <strong>#<?php echo esc_html( $order->get_order_number() ); ?></strong> · <?php echo esc_html( $order->get_billing_last_name() ); ?></p></header>
@@ -20,4 +20,4 @@
     <p id="notice" class="notice" role="status" aria-live="polite" hidden></p>
     <footer>Κρατήστε τη σελίδα ανοιχτή μέχρι να ολοκληρωθεί η αποστολή.</footer>
 </main><script id="jpd-od-config" type="application/json"><?php echo wp_json_encode( $config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT ); ?></script>
-<script src="<?php echo esc_url( plugins_url( 'assets/documents.js', JPD_OD_FILE ) ); ?>?ver=1.1.0" defer></script></body></html>
+<script src="<?php echo esc_url( plugins_url( 'assets/documents.js', JPD_OD_FILE ) ); ?>?ver=1.1.3" defer></script></body></html>

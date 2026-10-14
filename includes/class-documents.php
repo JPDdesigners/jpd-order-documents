@@ -21,6 +21,7 @@ class JPD_OD_Documents {
         $groups = array();
         foreach ( $data['rows'] as $row ) { $key = $row['root'] . "\0" . $row['sub'] . "\0" . $row['group']; $groups[ $key ][] = $row; }
         $chunks = array_chunk( array_values( $groups ), 60 ); $parts = array();
+        $logo = self::logo_data_uri();
         try {
             foreach ( $chunks as $index => $chunk ) {
                 $slice = $data; $slice['rows'] = array_merge( ...$chunk ); $slice['last'] = $index === count( $chunks ) - 1; $slice['part'] = $index + 1;
@@ -29,7 +30,7 @@ class JPD_OD_Documents {
                 $options->set( 'defaultFont', 'DejaVu Sans' ); $options->set( 'tempDir', $dir ); $options->set( 'fontCache', $dir );
                 $options->set( 'chroot', array( dirname( __DIR__ ) . '/lib/vendor/dompdf/dompdf', $dir ) );
                 $pdf = new \JPD_Order_Documents_Vendor\Dompdf\Dompdf( $options );
-                $pdf->loadHtml( self::html( $order, $slice ), 'UTF-8' ); $pdf->setPaper( 'A4', 'portrait' ); $pdf->render();
+                $pdf->loadHtml( self::html( $order, $slice, $logo ), 'UTF-8' ); $pdf->setPaper( 'A4', 'portrait' ); $pdf->render();
                 $part = $dir . '/part-' . $index . '.pdf'; $parts[] = $part;
                 if ( false === file_put_contents( $part, $pdf->output(), LOCK_EX ) ) { throw new RuntimeException( 'Δεν ήταν δυνατή η εγγραφή PDF.' ); }
                 @chmod( $part, 0600 ); unset( $pdf, $slice, $options ); gc_collect_cycles();
@@ -72,8 +73,65 @@ class JPD_OD_Documents {
         } finally { fclose( $out ); }
     }
     public static function number( $value ) { return rtrim( rtrim( number_format( $value, 4, ',', '' ), '0' ), ',' ); }
-    private static function money( $value, $order ) { return number_format( $value, wc_get_price_decimals(), ',', '.' ) . ' ' . $order->get_currency(); }
-    public static function html( $order, $data ) {
+    private static function money( $value, $order ) {
+        // Keep WooCommerce currency formatting without its browser-only markup.
+        return html_entity_decode( wp_strip_all_tags( wc_price( $value, array( 'currency' => $order->get_currency() ) ) ), ENT_QUOTES, 'UTF-8' );
+    }
+    private static function logo_data_uri() {
+        // Resolve the snippet's logo inside uploads. Never enable remote PDF resources.
+        $url = apply_filters( 'jpd_b2b_export_logo_url', home_url( '/wp-content/uploads/2025/12/logo-jpd.svg' ) );
+        if ( ! is_string( $url ) || ! function_exists( 'wp_upload_dir' ) ) { return ''; }
+        $uploads = wp_upload_dir( null, false );
+        if ( ! empty( $uploads['error'] ) || empty( $uploads['baseurl'] ) || empty( $uploads['basedir'] ) ) { return ''; }
+        $source = parse_url( $url ); $base = parse_url( $uploads['baseurl'] );
+        if ( ! is_array( $source ) || ! is_array( $base ) || ! in_array( strtolower( $source['scheme'] ?? '' ), array( 'http', 'https' ), true )
+            || 0 !== strcasecmp( $source['host'] ?? '', $base['host'] ?? '' ) || ( $source['port'] ?? null ) !== ( $base['port'] ?? null )
+            || isset( $source['user'] ) || isset( $source['pass'] ) ) { return ''; }
+        $prefix = rtrim( rawurldecode( $base['path'] ?? '' ), '/' ) . '/';
+        $path = rawurldecode( $source['path'] ?? '' );
+        if ( 0 !== strpos( $path, $prefix ) || false !== strpos( $path, "\0" ) || false !== strpos( $path, '\\' ) ) { return ''; }
+        $root = realpath( $uploads['basedir'] );
+        $file = $root ? realpath( $root . '/' . substr( $path, strlen( $prefix ) ) ) : false;
+        if ( ! $file || 0 !== strpos( $file, $root . DIRECTORY_SEPARATOR ) || ! is_file( $file ) || ! is_readable( $file ) ) { return ''; }
+        $bytes = filesize( $file );
+        if ( ! $bytes || $bytes > 1024 * 1024 ) { return ''; }
+        $contents = file_get_contents( $file, false, null, 0, 1024 * 1024 + 1 );
+        if ( false === $contents || strlen( $contents ) > 1024 * 1024 ) { return ''; }
+        if ( 'svg' === strtolower( pathinfo( $file, PATHINFO_EXTENSION ) ) ) {
+            // Illustrator exports may declare the standard SVG DTD. Embed no DTD.
+            $contents = preg_replace( '/<!DOCTYPE\s+svg\s+(?:PUBLIC\s+"[^"]*"\s+"[^"]*"|SYSTEM\s+"[^"]*")\s*>/i', '', $contents );
+            if ( ! self::safe_svg( $contents ) ) { return ''; }
+            $mime = 'image/svg+xml';
+        } else {
+            $image = @getimagesizefromstring( $contents ); $mime = $image['mime'] ?? '';
+            if ( ! in_array( $mime, array( 'image/png', 'image/jpeg' ), true ) || $image[0] > 4096 || $image[1] > 4096 ) { return ''; }
+        }
+        return 'data:' . $mime . ';base64,' . base64_encode( $contents );
+    }
+    private static function safe_svg( $contents ) {
+        if ( ! class_exists( 'DOMDocument' ) || preg_match( '/<!DOCTYPE|<!ENTITY|<\?xml-stylesheet/i', $contents ) ) { return false; }
+        $previous = libxml_use_internal_errors( true );
+        try {
+            $xml = new DOMDocument();
+            if ( ! $xml->loadXML( $contents, LIBXML_NONET ) || ! $xml->documentElement || 'svg' !== $xml->documentElement->localName
+                || 'http://www.w3.org/2000/svg' !== $xml->documentElement->namespaceURI ) { return false; }
+            foreach ( $xml->getElementsByTagName( '*' ) as $element ) {
+                if ( in_array( strtolower( $element->localName ), array( 'script', 'foreignobject' ), true ) ) { return false; }
+                foreach ( $element->attributes as $attribute ) {
+                    $value = trim( $attribute->value );
+                    if ( 'href' === strtolower( $attribute->localName ) && '' !== $value && '#' !== $value[0] ) { return false; }
+                }
+            }
+            if ( preg_match( '/@import/i', $contents ) ) { return false; }
+            preg_match_all( '/url\s*\(\s*([^)]+)\)/i', $xml->saveXML(), $matches );
+            foreach ( $matches[1] as $value ) {
+                $value = trim( $value, " \t\r\n\"'" );
+                if ( '' === $value || '#' !== $value[0] ) { return false; }
+            }
+            return true;
+        } finally { libxml_clear_errors(); libxml_use_internal_errors( $previous ); }
+    }
+    public static function html( $order, $data, $logo = null ) {
         $groups = array();
         foreach ( $data['rows'] as $r ) {
             $key = $r['root'] . "\0" . $r['sub'] . "\0" . $r['group'];
@@ -83,29 +141,10 @@ class JPD_OD_Documents {
             $g['sizes'][ $r['size'] ] += $r['qty']; $g['qty'] += $r['qty']; $g['total'] += $r['total'];
             $g['notes'] = array_unique( array_merge( $g['notes'], $r['notes'] ) ); unset( $g );
         }
-        $date = $order->get_date_created(); $cols = 3;
-        ob_start(); ?>
-        <!doctype html><html lang="el"><head><meta charset="UTF-8"><style>
-        @page{margin:14mm 12mm 17mm}body{font-family:"DejaVu Sans",sans-serif;font-size:9px;color:#222}h1{font-size:20px;margin:0 0 8px}h2{font-size:13px;margin:0 0 6px}.meta{line-height:1.65;margin-bottom:12px}.muted{color:#666}.warning{background:#fff3db;padding:8px;margin-bottom:10px}table{width:100%;border-collapse:collapse;table-layout:fixed}thead{display:table-header-group}th{background:#eee;text-align:left;padding:8px}td{border-bottom:1px solid #ddd;padding:8px;vertical-align:middle;word-wrap:break-word}tr.product{page-break-inside:avoid}.root td{background:#222;color:white;font-weight:bold;padding:8px}.sub td{background:#f0f0f0;font-weight:bold}.num{text-align:right}.photo{width:55px;text-align:center}.photo img{max-width:46px;max-height:69px}.badge{display:inline-block;padding:3px 6px;margin:2px;background:#f1f1f1;border:1px solid #ddd}.summary{font-size:12px;font-weight:bold;margin-top:12px}.note{font-size:8px;color:#666;margin-top:5px}footer{margin-top:15px;font-size:8px;line-height:1.6}
-        </style></head><body>
-        <h1><?php echo esc_html( get_bloginfo( 'name' ) ); ?></h1><h2>Παραγγελία #<?php echo esc_html( $order->get_order_number() ); ?> · Συνοπτικό PDF<?php if ( isset( $data['part'] ) && $data['part'] > 1 ) { echo ' · Συνέχεια'; } ?></h2>
-        <div class="meta"><?php echo esc_html( $order->get_billing_last_name() ); ?> · ΑΦΜ: <?php echo esc_html( $order->get_billing_first_name() ); ?><br>
-        <?php echo esc_html( $order->get_billing_email() ); ?> · <?php echo esc_html( $date ? $date->date_i18n( 'd/m/Y' ) : '' ); ?> · Σεζόν: <?php echo esc_html( $order->get_meta( '_jpd_season' ) ); ?><br>
-        <?php echo esc_html( $order->get_customer_note() ); ?></div>
-        <?php if ( $data['warnings'] ) { ?><div class="warning">Γραμμές με παρατηρήσεις: <?php echo (int) $data['warnings']; ?>. Ελέγξτε τις σημειώσεις.</div><?php } ?>
-        <?php if ( abs( $data['total'] - (float) $order->get_total() ) >= pow( 10, -wc_get_price_decimals() ) / 2 ) { ?><div class="warning">Η τρέχουσα αξία διαφέρει από την αποθηκευμένη αξία της παραγγελίας.</div><?php } ?>
-        <table><thead><tr><th style="width:70%">Προϊόν / Χρώμα / Μεγέθη</th><th class="num" style="width:10%">Τεμάχια</th><th class="num" style="width:20%">Συνολική αξία</th></tr></thead><tbody>
-        <?php $root = null; $sub = null; foreach ( $groups as $g ) {
-            if ( $root !== $g['root'] ) { $root = $g['root']; $sub = null; ?><tr class="root"><td colspan="<?php echo $cols; ?>"><?php echo esc_html( $root ); ?></td></tr><?php }
-            if ( $sub !== $g['sub'] ) { $sub = $g['sub']; ?><tr class="sub"><td colspan="<?php echo $cols; ?>"><?php echo esc_html( $sub ); ?></td></tr><?php } ?>
-            <tr class="product">
-            <td><strong><?php echo esc_html( $g['parent_sku'] . ' · ' . $g['name'] ); ?></strong><br><?php echo esc_html( $g['color'] ); ?><br>
-            <?php foreach ( $g['sizes'] as $size => $qty ) { ?><span class="badge"><?php echo esc_html( $size . ': ' . self::number( $qty ) ); ?></span> <?php } ?>
-            <?php if ( $g['notes'] ) { ?><div class="note"><?php echo esc_html( implode( ' · ', $g['notes'] ) ); ?></div><?php } ?></td>
-            <td class="num"><?php echo esc_html( self::number( $g['qty'] ) ); ?></td><td class="num"><?php echo esc_html( self::money( $g['total'], $order ) ); ?></td></tr>
-        <?php } ?></tbody></table>
-        <?php if ( ! isset( $data['last'] ) || $data['last'] ) { ?><div class="summary">Σύνολο: <?php echo esc_html( self::number( $data['qty'] ) ); ?> τεμάχια · <?php echo esc_html( self::money( $data['total'], $order ) ); ?></div><?php } else { ?><div class="note">Η παραγγελία συνεχίζεται στις επόμενες σελίδες. Το συνολικό άθροισμα εμφανίζεται στο τέλος.</div><?php } ?>
-        <footer>Οι ποσότητες προέρχονται από την παραγγελία. Οι τιμές και τα στοιχεία προϊόντων υπολογίστηκαν κατά τη δημιουργία των εγγράφων. Όπου δεν υπάρχει διαθέσιμη τρέχουσα τιμή, χρησιμοποιείται η αποθηκευμένη αξία γραμμής. Δεν περιλαμβάνονται φόροι, μεταφορικά ή κουπόνια.</footer>
-        </body></html><?php return ob_get_clean();
+        $date = $order->get_date_created(); $season = trim( (string) $order->get_meta( '_jpd_season' ) );
+        if ( null === $logo ) { $logo = self::logo_data_uri(); }
+        ob_start();
+        try { require __DIR__ . '/pdf-template.php'; return ob_get_contents(); }
+        finally { ob_end_clean(); }
     }
 }
